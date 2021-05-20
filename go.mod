@@ -1,4 +1,4 @@
-module go.mod
+module api-sales
 
 go 1.16
 

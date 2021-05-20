@@ -1,35 +1,17 @@
 package main
 
 import (
-	"bufio"
-	"context"
-	"encoding/csv"
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"log"
-	"net/http"
-	"os"
-	"strings"
-
-	"github.com/dgraph-io/dgo/v200"
-	"github.com/dgraph-io/dgo/v200/protos/api"
-	"github.com/go-chi/chi/v5"
-	"google.golang.org/grpc"
+	"api-sales/src/routes"
 )
 
-type task struct {
+/*type task struct {
 	ID      int    `json:"ID"`
 	Name    string `json:"Name"`
 	Content string `json:"Content"`
 	Date    string `json:"Date"`
-}
+}*/
 
-type Date struct {
-	DateUnix int64 `json:"date,omitempty"`
-}
-
-type Product struct {
+/*type Product struct {
 	IdProduct   string `json:"idProduct,omitempty"`
 	ProductName string `json:"productName,omitempty"`
 	Price       string `json:"price,omitempty"`
@@ -62,30 +44,32 @@ type CancelFunc func()
 
 type answer struct {
 	Message string `json:"message"`
-}
+}*/
 
 func main() {
-	router := chi.NewRouter()
-	router.Get("/", index)
+	/*router := chi.NewRouter()
+	router.Get("/", index)*/
 	/*router.Get("/tasks", getTasks)
 	router.Post("/task", createTask)
 	router.Get("/task/{id}", getTask)
 	router.Delete(("/task/{id}"), deleteTask)
 	router.Put(("/task/{id}"), updateTask)*/
-	router.Post("/upload-data", uploadData)
+	//router.Post("/upload-data", uploadData)
 
 	//readCSVFile()
 	//readTxtFile("1621141200")
 	//uploadData()
 
-	log.Fatal(http.ListenAndServe(`:3000`, router))
+	//log.Fatal(http.ListenAndServe(`:3000`, router))
+
+	routes.SetUpServer("3000")
 }
 
-func index(w http.ResponseWriter, r *http.Request) {
+/*func index(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Servidor a la escucha")
-}
+}*/
 
-func getDgraphClient() (*dgo.Dgraph, CancelFunc) {
+/*func getDgraphClient() (*dgo.Dgraph, CancelFunc) {
 	conn, err := grpc.Dial("127.0.0.1:9080", grpc.WithInsecure())
 	if err != nil {
 		log.Fatal("While trying to dial gRPC")
@@ -114,13 +98,13 @@ func getDgraphClient() (*dgo.Dgraph, CancelFunc) {
 			log.Printf("Error while closing connection:%v", err)
 		}
 	}
-}
+}*/
 
-type date struct {
+/*type date struct {
 	Date string `json:"date"`
-}
+}*/
 
-func uploadData(w http.ResponseWriter, r *http.Request) {
+/*func uploadData(w http.ResponseWriter, r *http.Request) {
 	//var date string = "1621141200"
 	var date date
 	reqBody, err := ioutil.ReadAll(r.Body)
@@ -168,9 +152,9 @@ func uploadData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(answer)
-}
+}*/
 
-func generateCustomers(people []Person, purchases []Purchase) []Customer {
+/*func generateCustomers(people []Person, purchases []Purchase) []Customer {
 	var purchasesPerPerson []Purchase
 	var customers []Customer
 
@@ -194,9 +178,9 @@ func generateCustomers(people []Person, purchases []Purchase) []Customer {
 	//fmt.Println(customers)
 
 	return customers
-}
+}*/
 
-func createSchema() *api.Operation {
+/*func createSchema() *api.Operation {
 	op := &api.Operation{}
 	op.Schema = `
 		id: string@index(exact) .
@@ -210,12 +194,12 @@ func createSchema() *api.Operation {
 		products: [uid] .
 		idProduct: string .
 		productName: string .
-		price: string . 
+		price: string .
 	`
 	return op
-}
+}*/
 
-func readJsonFile(date string) (_ []Person, err error) {
+/*func readJsonFile(date string) (_ []Person, err error) {
 	jsonFile, err := os.Open("./assets/files/" + date + "/people.json")
 	if err != nil {
 		fmt.Println(err)
@@ -232,12 +216,10 @@ func readJsonFile(date string) (_ []Person, err error) {
 		return people, err
 	}
 	return people, nil
-	/*for i := 0; i < len(People); i++ {
-		fmt.Println("Name: " + People[i].Name + " Age: " + strconv.Itoa(People[i].Age))
-	}*/
-}
 
-func readCSVFile(date string) (_ []Product, err error) {
+}*/
+
+/*func readCSVFile(date string) (_ []Product, err error) {
 	var products []Product
 	csvFile, err := os.Open("./assets/files/" + date + "/products.csv")
 	if err != nil {
@@ -269,10 +251,10 @@ func readCSVFile(date string) (_ []Product, err error) {
 	dateUnix := Date{
 		DateUnix: unix,
 	}
-	fmt.Println(dateUnix)*/
-}
 
-func readTxtFile(date string) []Purchase {
+}*/
+
+/*func readTxtFile(date string) []Purchase {
 	data, err := ioutil.ReadFile("./assets/files/" + date + "/transactions.txt")
 	if err != nil {
 		fmt.Println(err)
@@ -336,9 +318,9 @@ func readTxtFile(date string) []Purchase {
 	}
 	//fmt.Println(purchases)
 	return purchases
-}
+}*/
 
-func removeBrackets(line string) []string {
+/*func removeBrackets(line string) []string {
 
 	line = strings.ReplaceAll(line, "(", "")
 	line = strings.ReplaceAll(line, ")", "")
@@ -346,9 +328,9 @@ func removeBrackets(line string) []string {
 	slice := strings.Split(line, ",")
 
 	return slice
-}
+}*/
 
-func assignProducts(idProducts []string, date string) (_ []Product, err error) {
+/*func assignProducts(idProducts []string, date string) (_ []Product, err error) {
 	var listItems []Product
 	products, err := readCSVFile(date)
 	if err != nil {
@@ -371,4 +353,4 @@ func assignProducts(idProducts []string, date string) (_ []Product, err error) {
 	}
 
 	return listItems, nil
-}
+}*/

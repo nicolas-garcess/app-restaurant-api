@@ -94,8 +94,8 @@ func GetCustomers(w http.ResponseWriter, r *http.Request) {
 
 	ctx := context.Background()
 
-	query := `query all($a: string) {
-				customers(func: gt(count(purchases), 0)) {
+	query := `query AllCustomers($value: string) {
+				allcustomers(func: gt(count(purchases), 0)) {
 					id
 					name
 					age
@@ -105,103 +105,82 @@ func GetCustomers(w http.ResponseWriter, r *http.Request) {
 						device
 						products {
 							idProduct
-							nameProduct
+							productName
 							price
 						}
 					}
 				}	  		
 			}`
 
-	res, err := dg.NewTxn().QueryWithVars(ctx, query, map[string]string{"$a": "0"})
+	res, err := dg.NewTxn().QueryWithVars(ctx, query, map[string]string{"$value": "0"})
 	if err != nil {
 		http.Error(w, err.Error(), 404)
 		return
 	}
 
-	json.NewEncoder(w).Encode(string(res.Json))
+	type AllCustomers struct {
+		AllCustomers []models.Customer `json:"allCustomers"`
+	}
+	var allCustomers AllCustomers
+
+	err = json.Unmarshal(res.Json, &allCustomers)
+	if err != nil {
+		http.Error(w, err.Error(), 404)
+		return
+	}
+
+	json.NewEncoder(w).Encode(allCustomers)
 }
 
 func GetCustomer(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	id := chi.URLParam(r, "id")
 
-	dg, cancel := getDgraphClient()
-	defer cancel()
-
-	ctx := context.Background()
-
-	varib, queryCustomer := queryCustomer(id)
-
-	res, err := dg.NewTxn().QueryWithVars(ctx, queryCustomer, varib)
+	//Generación de lista de compradores
+	customer, err := queryCustomer(id)
 	if err != nil {
 		http.Error(w, err.Error(), 404)
 		return
 	}
 
-	type Buyer struct {
-		Customer []models.Customer `json:"customer"`
-	}
+	var customersIP []models.ResponseQueryIP
 
-	var customer Buyer
-	err = json.Unmarshal(res.Json, &customer)
-	if err != nil {
-		http.Error(w, err.Error(), 404)
-		return
-	}
-
-	type CustomerIP struct {
-		Ip        string           `json:"ip"`
-		Products  []models.Product `json:"products"`
-		Purchases []models.Person  `json:"~purchases"`
-	}
-
-	type SameIP struct {
-		Customers []CustomerIP `json:"customers"`
-	}
-
-	var customerSameIP SameIP
-	var customersWithSameIP []SameIP
-
+	//Si la longitud de los compradores es 0 significa que introdujo un id erróneo
 	if len(customer.Customer) != 0 {
-		//Iteración para deteminar con qué ips ha comprado el cliente
-		for _, value := range customer.Customer[0].Purchases {
-			variables, queryIP := queryIp(value.Ip, id)
-			res, err := dg.NewTxn().QueryWithVars(ctx, queryIP, variables)
-			if err != nil {
-				http.Error(w, err.Error(), 404)
-				return
-			}
-
-			err = json.Unmarshal(res.Json, &customerSameIP)
-			if err != nil {
-				http.Error(w, err.Error(), 404)
-				return
-			}
-
-			if len(customerSameIP.Customers[0].Purchases) > 0 {
-				customersWithSameIP = append(customersWithSameIP, customerSameIP)
-			}
-			customerSameIP = SameIP{Customers: nil}
+		customersWithSameIP, err := queryCustomersSameIp(id, customer.Customer)
+		if err != nil {
+			http.Error(w, err.Error(), 404)
+			return
 		}
+		//Creación de lista de compradores que tienen la misma ip del comprador buscado
+		customersIP = customersWithSameIP
 	} else {
 		http.Error(w, "No existe usuario con el ID buscado", 400)
 		return
 	}
 
 	type Reply struct {
-		Customer        Buyer    `json:"customer"`
-		CustomersSameIP []SameIP `json:"customersSameIP"`
+		Customer        models.Buyer             `json:"customer"`
+		CustomersSameIP []models.ResponseQueryIP `json:"customersSameIP"`
 	}
+
 	reply := Reply{
 		Customer:        customer,
-		CustomersSameIP: customersWithSameIP,
+		CustomersSameIP: customersIP,
 	}
 
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(reply)
 }
 
-func queryCustomer(id string) (map[string]string, string) {
+func queryCustomer(id string) (_ models.Buyer, err error) {
+	var customer models.Buyer
+
+	dg, cancel := getDgraphClient()
+	defer cancel()
+
+	ctx := context.Background()
+
 	variables := map[string]string{"$id": id}
 	query := `query Customer($id: string) {
 				customer(func: eq(id, $id)) {
@@ -222,11 +201,25 @@ func queryCustomer(id string) (map[string]string, string) {
 				}
 			}`
 
-	return variables, query
+	res, err := dg.NewTxn().QueryWithVars(ctx, query, variables)
+	if err != nil {
+		return customer, err
+	}
+
+	err = json.Unmarshal(res.Json, &customer)
+	if err != nil {
+		return customer, err
+	}
+
+	return customer, nil
 }
 
-func queryIp(ip string, id string) (map[string]string, string) {
-	variables := map[string]string{"$ip": ip, "$id": id}
+func queryCustomersSameIp(id string, customer []models.Customer) (_ []models.ResponseQueryIP, err error) {
+	dg, cancel := getDgraphClient()
+	defer cancel()
+
+	ctx := context.Background()
+
 	query := `query Customers($ip: string, $id: string) {
 				customers(func: eq(ip, $ip)) {
 					ip
@@ -243,7 +236,30 @@ func queryIp(ip string, id string) (map[string]string, string) {
 				}
 			}`
 
-	return variables, query
+	var responseQueryIP models.ResponseQueryIP
+	var customersWithSameIP []models.ResponseQueryIP
+
+	//Iteración para deteminar con qué ips ha comprado el cliente
+	for _, value := range customer[0].Purchases {
+		variables := map[string]string{"$ip": value.Ip, "$id": id}
+		res, err := dg.NewTxn().QueryWithVars(ctx, query, variables)
+		if err != nil {
+			return customersWithSameIP, err
+		}
+
+		err = json.Unmarshal(res.Json, &responseQueryIP)
+		if err != nil {
+			return customersWithSameIP, err
+		}
+		//Decisión para determinar si esa ip ha sido utilizada por otro cliente
+		if len(responseQueryIP.Customers[0].Purchases) > 0 {
+			customersWithSameIP = append(customersWithSameIP, responseQueryIP)
+		}
+		responseQueryIP = models.ResponseQueryIP{Customers: nil}
+		variables = nil
+	}
+
+	return customersWithSameIP, err
 }
 
 func getDgraphClient() (*dgo.Dgraph, models.CancelFunc) {
@@ -379,7 +395,7 @@ func readTxtFile(date string) (_ []models.Purchase, err error) {
 	var i int = -1
 	var j int = 0
 
-	//For para obtener la estructura buscada
+	//Ciclo para obtener la estructura buscada
 	for _, numChar := range string(data) {
 
 		char := string(numChar)
@@ -425,6 +441,7 @@ func readTxtFile(date string) (_ []models.Purchase, err error) {
 	return purchases, nil
 }
 
+//Remueve los paréntesis que se tienen en el archivo txx
 func removeBrackets(line string) []string {
 
 	line = strings.ReplaceAll(line, "(", "")
@@ -443,18 +460,20 @@ func assignProducts(idProducts []string, date string) (_ []models.Product, err e
 		return listItems, err
 	}
 
-	for i, idProduct := range idProducts {
-		for j, product := range products {
+	for _, idProduct := range idProducts {
+		for _, product := range products {
 
+			//Si el producto comprado coincide con algún producto de los registrados entonces agrega el producto con sus propiedades.
+			//Si el producto comprado no coincide con ningún producto registrado entonces agréguelo sólo con id
 			if idProduct == product.IdProduct {
 				listItems = append(listItems, product)
-			} else if j == len(products)-1 && i != len(listItems)-1 {
+			} /*else if j == len(products)-1 && i != len(listItems)-1 {
 				listItems = append(listItems, models.Product{
 					IdProduct:   idProduct,
 					ProductName: "",
 					Price:       "",
 				})
-			}
+			}*/
 		}
 	}
 

@@ -43,6 +43,20 @@ type Answer struct {
 	Message string `json:"message"`
 }
 
+type CustomerIP struct {
+	Ip        string    `json:"ip"`
+	Products  []Product `json:"products"`
+	Purchases []Person  `json:"~purchases"`
+}
+
+type ResponseQueryIP struct {
+	Customers []CustomerIP `json:"customers"`
+}
+
+type Buyer struct {
+	Customer []Customer `json:"customer"`
+}
+
 /*type Response struct {
 	Status    bool   `json:"status"`
 	Message   string `json:"message"`

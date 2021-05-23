@@ -1,14 +1,11 @@
 package models
 
-/*type Date struct {
-	DateUnix int64 `json:"date,omitempty"`
-}*/
-
 type Date struct {
 	Date string `json:"date"`
 }
 
 type Product struct {
+	Uid         string `json:"uid,omitempty"`
 	IdProduct   string `json:"idProduct,omitempty"`
 	ProductName string `json:"productName,omitempty"`
 	Price       string `json:"price,omitempty"`
@@ -39,10 +36,6 @@ type Customer struct {
 
 type CancelFunc func()
 
-type Answer struct {
-	Message string `json:"message"`
-}
-
 type CustomerIP struct {
 	Ip        string    `json:"ip"`
 	Products  []Product `json:"products"`
@@ -57,8 +50,12 @@ type Buyer struct {
 	Customer []Customer `json:"customer"`
 }
 
-/*type Response struct {
-	Status    bool   `json:"status"`
-	Message   string `json:"message"`
-	Customers `json:"customers"`
-}*/
+type Count struct {
+	IdProduct   string `json:"idProduct"`
+	ProductName string `json:"productName"`
+	Total       int    `json:"total"`
+}
+
+type SoldProduct struct {
+	Products []Count `json:"mostSoldProducts"`
+}

@@ -26,12 +26,12 @@ var SetUpServer = func(Port string) {
 	router.Use(c.Handler)
 
 	router.Get("/", controller.Index)
-	router.Post("/upload-data", controller.UploadData)
+	router.Post("/data", controller.UploadData)
 	router.Get("/customers", controller.GetCustomers)
 	router.Get("/customer/{id}", controller.GetCustomer)
 
 	err := http.ListenAndServe(":"+Port, router)
 	if err != nil {
-		fmt.Println("No se pudo conectar al servidor")
+		fmt.Println(err)
 	}
 }

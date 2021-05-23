@@ -31,3 +31,5 @@
 # Ignore all local history of files
 .history
 .ionide
+
+.env
